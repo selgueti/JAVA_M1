@@ -1,12 +1,33 @@
 package fr.uge.tp5;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodHandles.Lookup;
+import java.lang.invoke.VarHandle;
+
 public class SpinLock {
+	
+	private volatile boolean lock = false;
+	
+	private final static VarHandle handle;
+	
+	static {
+		Lookup lookup = MethodHandles.lookup();
+		try {
+			handle = lookup.findVarHandle(SpinLock.class, "lock", boolean.class);
+		}catch (NoSuchFieldException | IllegalAccessException  e) {
+			throw new AssertionError(e);
+		}
+	}
+	
 	public void lock() {
-		// TODO
+		while(!handle.compareAndSet(this, false, true)) {
+			Thread.onSpinWait();
+		}
+		lock = true;
 	}
 
 	public void unlock() {
-		// TODO
+		lock = false;
 	}
 
 	public static void main(String[] args) throws InterruptedException {
