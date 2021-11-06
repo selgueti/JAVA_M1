@@ -1,53 +1,51 @@
 package fr.uge.tp5;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodHandles.Lookup;
+import java.lang.invoke.VarHandle;
 import java.util.HashSet;
-import java.util.concurrent.atomic.AtomicLong;
 
-public class RandomNumberGenerator {
-	private AtomicLong x;
+public class RandomNumberGeneratorVarHandle {
 
-	public RandomNumberGenerator(long seed) {
+	private final static VarHandle HANDLE;
+	private long x;
+
+	static {
+		Lookup lookup = MethodHandles.lookup();
+		try {
+			HANDLE = lookup.findVarHandle(RandomNumberGeneratorVarHandle.class, "x", long.class);
+		} catch (NoSuchFieldException | IllegalAccessException e) {
+			throw new AssertionError(e);
+		}
+
+	}
+
+	public RandomNumberGeneratorVarHandle(long seed) {
 		if (seed == 0) {
 			throw new IllegalArgumentException("seed == 0");
 		}
-		x = new AtomicLong(seed);
+		x = seed;
 	}
 
-//	public long next() { // Marsaglia's XorShift
-//		x ^= x >>> 12;
-//		x ^= x << 25;
-//		x ^= x >>> 27;
-//		return x * 2685821657736338717L;
-//	}
-
-	public long nextOld() { // Marsaglia's XorShift
+	public long next() { // Marsaglia's XorShift
 		for (;;) {
-		 long myX = x.get();
-		 long myNewX = myX;
-			myNewX ^= myNewX >>> 12;
-			myNewX ^= myNewX << 25;
-			myNewX ^= myNewX >>> 27;
-			if (x.compareAndSet(myX, myNewX)) {
-				return myNewX * 2685821657736338717L;
+			long myX = x;
+			long newX = myX;
+			newX ^= newX >>> 12;
+			newX ^= newX << 25;
+			newX ^= newX >>> 27;
+			if (HANDLE.compareAndSet(this, myX, newX)) {
+				return newX;
 			}
 		}
 	}
 
-	public long next() { // Marsaglia's XorShift
-		return x.updateAndGet(myNewX -> {
-			myNewX ^= myNewX >>> 12;
-			myNewX ^= myNewX << 25;
-			myNewX ^= myNewX >>> 27;
-			return myNewX;
-		});
-	}
-	
 	public static void main(String[] args) throws InterruptedException {
 		var set0 = new HashSet<Long>();
 		var set1 = new HashSet<Long>();
 		var set2 = new HashSet<Long>();
-		var rng0 = new RandomNumberGenerator(1);
-		var rng = new RandomNumberGenerator(1);
+		var rng0 = new RandomNumberGeneratorVarHandle(1);
+		var rng = new RandomNumberGeneratorVarHandle(1);
 
 		for (var i = 0; i < 10_000; i++) {
 			set0.add(rng0.next());

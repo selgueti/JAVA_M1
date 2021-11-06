@@ -8,19 +8,19 @@ public class SpinLock {
 	
 	private volatile boolean lock = false;
 	
-	private final static VarHandle handle;
+	private final static VarHandle HANDLE;
 	
 	static {
 		Lookup lookup = MethodHandles.lookup();
 		try {
-			handle = lookup.findVarHandle(SpinLock.class, "lock", boolean.class);
+			HANDLE = lookup.findVarHandle(SpinLock.class, "lock", boolean.class);
 		}catch (NoSuchFieldException | IllegalAccessException  e) {
 			throw new AssertionError(e);
 		}
 	}
 	
 	public void lock() {
-		while(!handle.compareAndSet(this, false, true)) {
+		while(!HANDLE.compareAndSet(this, false, true)) {
 			Thread.onSpinWait();
 		}
 		lock = true;
